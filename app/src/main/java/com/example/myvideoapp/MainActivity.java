@@ -2,20 +2,31 @@ package com.example.myvideoapp;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.StrictMode;
 import android.util.Log;
+import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,81 +38,101 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
-        //Uri uri = Uri.parse("android.content://com.example.myvideoapp/raw/hasil_movie_scene_1");
-        String fileImagePath = "android.resource://" + getPackageName() + "/" + R.raw.hasil_movie_scene_1;
-        //File fileImagePath = new File(getFilesDir().getPath() + "/hasil_movie_scene_1.mp4");
-
-        Uri uri = FileProvider.getUriForFile(MainActivity.this, BuildConfig.APPLICATION_ID + ".provider", new File(fileImagePath));
-        //Uri uri = Uri.parse("content://" + getPackageName() + "/" + R.raw.hasil_movie_scene_1);
-        //Log.d(TAG,uri.getUserInfo().toString());
-
-        //String path = getFilesDir().getPath();
-        //Log.d(TAG," path = "+path);
-
-        /*(if (!imageFile.exists()) { // image isn't in the files dir, copy from the res/raw
-            final InputStream inputStream =getResources().openRawResource(R.raw.hasil_movie_scene_1);
-            FileOutputStream outputStream = null;
-            try {
-                outputStream = openFileOutput("image", Context.MODE_PRIVATE);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-
-            byte buf[] = new byte[1024];
-            int len;
-            while (true) {
-                try {
-                    if (!((len = inputStream.read(buf)) > 0)) break;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    outputStream.write(buf, 0, len);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            try {
-                outputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            try {
-                inputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            imageFile = new File(getFilesDir().getPath() + "/image");
+        Field[] fields=R.raw.class.getFields();
+        ArrayList<String> arrayList = new ArrayList<String>();
+        for(int count=0;count<fields.length;count++){
+            arrayList.add(fields[count].getName());
         }
-
-        if (!imageFile.exists()) {
+        for(int res_count=0;res_count<fields.length;res_count++){
             try {
-                throw new IOException("couldn't find file");
-            } catch (IOException e) {
+                copyRawResource(fields[res_count].getInt(fields[res_count]));
+            } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
         }
+        for(String ele:arrayList){
+            Log.d(TAG,"array elements are "+ele);
+        }
+        ListView listView = (ListView)findViewById(R.id.listView);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, arrayList);
+        listView.setAdapter(adapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                File imageFile = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                //Log.d(TAG," path = "+path.getAbsolutePath());
+                //list all the files in app specific path
+
+
+                final Uri uri = Uri.fromFile(imageFile);
+                Log.d(TAG,"final uri = "+uri.getPath());
+                Intent intent = new Intent();
+                intent.setAction(Intent.ACTION_SEND);
+                File file = new File(uri.getPath());
+                intent.setDataAndType(Uri.fromFile(file), "video/*");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                startActivity(intent);
+            }
+        });
+        //addRecyclerView();
+        /*
+        //copyRawResource(R.raw.hasil_movie_scene_1);
+        File imageFile = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        //Log.d(TAG," path = "+path.getAbsolutePath());
+        //list all the files in app specific path
+
 
         final Uri uri = Uri.fromFile(imageFile);
-        */
+        Log.d(TAG,"final uri = "+uri.getPath());
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_SEND);
-
         File file = new File(uri.getPath());
-
-        //MimeTypeMap mime = MimeTypeMap.getSingleton();
-        //String ext = file.getName().substring(file.getName().indexOf(".") + 1);
-        //String type = mime.getMimeTypeFromExtension(ext);
-
-
         intent.setDataAndType(Uri.fromFile(file), "video/*");
-        //intent.setType("video/*");
-        //String path_2 = "android.resource://" + getPackageName() + "/" + R.raw.hasil_movie_scene_1;
-        //intent.putExtra(Intent.EXTRA_STREAM,Uri.parse(path_2));
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         startActivity(intent);
+        */
+    }
+
+    private void addRecyclerView() {
+        List<Data> data = fill_with_data();
+        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
+        Recycler_View_Adapter adapter = new Recycler_View_Adapter(data, getApplication());
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+    }
+
+    private List<Data> fill_with_data() {
+        List<Data> data = new ArrayList<>();
+        data.add(new Data("hasil_movie_scene_1"));
+        return data;
+    }
+
+    private void copyRawResource(int resId) {
+        Log.i("Test", "Setup::copyResources");
+        InputStream in = getResources().openRawResource(resId);
+        String filename = getResources().getResourceEntryName(resId);
+
+        File f = new File(filename+".mp4");
+
+        if(!f.exists()){
+            try {
+                //OutputStream out = new FileOutputStream(new File(String.valueOf(getExternalFilesDir(Environment.DIRECTORY_MOVIES))), Boolean.parseBoolean(filename));
+                File appSpecificExternalDir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), filename);
+                OutputStream out = new FileOutputStream(appSpecificExternalDir);
+                byte[] buffer=new byte[1024];
+                int len;
+                while((len = in.read(buffer, 0, buffer.length)) != -1){
+                    out.write(buffer, 0, len);
+                }
+                in.close();
+                out.close();
+            } catch (FileNotFoundException e) {
+                Log.i("Test", "Setup::copyResources - "+e.getMessage());
+            } catch (IOException e) {
+                Log.i("Test", "Setup::copyResources - "+e.getMessage());
+            }
+        }
     }
 }
