@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.StrictMode;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.webkit.MimeTypeMap;
 import android.widget.AdapterView;
@@ -38,20 +39,23 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
+
         Field[] fields=R.raw.class.getFields();
         ArrayList<String> arrayList = new ArrayList<String>();
-        for(int count=0;count<fields.length;count++){
-            arrayList.add(fields[count].getName());
-        }
+        String ext=".mp4";
         for(int res_count=0;res_count<fields.length;res_count++){
             try {
-                copyRawResource(fields[res_count].getInt(fields[res_count]));
+                int resId = fields[res_count].getInt(fields[res_count]);
+
+                TypedValue value = new TypedValue();
+                getResources().getValue(resId, value, true);
+                int lastIndex = value.string.toString().lastIndexOf(".");
+                ext=value.string.toString().substring(lastIndex);
+                arrayList.add(getResources().getResourceEntryName(resId)+ext);
+                copyRawResource(resId,ext);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
-        }
-        for(String ele:arrayList){
-            Log.d(TAG,"array elements are "+ele);
         }
         ListView listView = (ListView)findViewById(R.id.listView);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, arrayList);
@@ -60,14 +64,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 File imageFile = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-                //Log.d(TAG," path = "+path.getAbsolutePath());
-                //list all the files in app specific path
-
-
                 final Uri uri = Uri.fromFile(imageFile);
                 Log.d(TAG,"final uri = "+uri.getPath());
                 Intent intent = new Intent();
-                intent.setAction(Intent.ACTION_SEND);
+                intent.setAction(Intent.ACTION_VIEW);
                 File file = new File(uri.getPath());
                 intent.setDataAndType(Uri.fromFile(file), "video/*");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -76,23 +76,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         //addRecyclerView();
-        /*
-        //copyRawResource(R.raw.hasil_movie_scene_1);
-        File imageFile = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-        //Log.d(TAG," path = "+path.getAbsolutePath());
-        //list all the files in app specific path
-
-
-        final Uri uri = Uri.fromFile(imageFile);
-        Log.d(TAG,"final uri = "+uri.getPath());
-        Intent intent = new Intent();
-        intent.setAction(Intent.ACTION_SEND);
-        File file = new File(uri.getPath());
-        intent.setDataAndType(Uri.fromFile(file), "video/*");
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        startActivity(intent);
-        */
     }
 
     private void addRecyclerView() {
@@ -109,12 +92,13 @@ public class MainActivity extends AppCompatActivity {
         return data;
     }
 
-    private void copyRawResource(int resId) {
-        Log.i("Test", "Setup::copyResources");
+    private void copyRawResource(int resId, String ext) {
+        //Log.i("Test", "Setup::copyResources");
         InputStream in = getResources().openRawResource(resId);
-        String filename = getResources().getResourceEntryName(resId);
+        String filename = getResources().getResourceEntryName(resId)+ext;
+        //System.out.println(" filename  = "+filename);
 
-        File f = new File(filename+".mp4");
+        File f = new File(filename);
 
         if(!f.exists()){
             try {
